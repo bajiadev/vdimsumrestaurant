@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string-array name="pinpad_keyboard_number">
+        <item>@string/pinpad_keyboard_0</item>
+        <item>@string/pinpad_keyboard_1</item>
+        <item>@string/pinpad_keyboard_2</item>
+        <item>@string/pinpad_keyboard_3</item>
+        <item>@string/pinpad_keyboard_4</item>
+        <item>@string/pinpad_keyboard_5</item>
+        <item>@string/pinpad_keyboard_6</item>
+        <item>@string/pinpad_keyboard_7</item>
+        <item>@string/pinpad_keyboard_8</item>
+        <item>@string/pinpad_keyboard_9</item>
+    </string-array>
+    <string name="pinpad_keyboard_0">0</string>
+    <string name="pinpad_keyboard_1">1</string>
+    <string name="pinpad_keyboard_2">2</string>
+    <string name="pinpad_keyboard_3">3</string>
+    <string name="pinpad_keyboard_4">4</string>
+    <string name="pinpad_keyboard_5">5</string>
+    <string name="pinpad_keyboard_6">6</string>
+    <string name="pinpad_keyboard_7">7</string>
+    <string name="pinpad_keyboard_8">8</string>
+    <string name="pinpad_keyboard_9">9</string>
+    <string name="pinpad_keyboard_backspace">DELETE</string>
+    <string name="pinpad_keyboard_cancel">CANCEL</string>
+    <string name="pinpad_keyboard_confirm">CONFIRM</string>
+    <string name="pinpad_unknown">Unknown</string>
+</resources>

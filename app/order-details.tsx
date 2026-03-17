@@ -1,4 +1,5 @@
 import type { Order } from "@/type";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
@@ -6,21 +7,21 @@ import {
   Text,
   TouchableOpacity,
   View,
+  NativeModules,
 } from "react-native";
-import { useLocalSearchParams, useRouter } from "expo-router";
 
 import {
   acceptOrder,
   cancelOrder,
   completeOrder,
+  getMenuItemsByIds,
   getOrderById,
   getOrderDetails,
-  getMenuItemsByIds,
   markOrderOnTheWay,
   markOrderReady,
   startPreparingOrder,
 } from "@/lib/firebase";
-import { printOrderToSunmi } from "@/lib/sunmiPrinter";
+import { printOrder } from "@/lib/printer";
 import ScreenTemplate from "../components/ScreenTemplate";
 
 type OrderLike = Order & {
@@ -67,6 +68,11 @@ export default function OrderDetails() {
   const from = typeof params.from === "string" ? params.from : "";
 
   const [order, setOrder] = useState<OrderLike | null>(null);
+
+  // Debugging states
+  const [printInfo, setPrintInfo] = useState<string>("");
+  const [printerDebug, setPrinterDebug] = useState<string>("");
+
   const [orderItems, setOrderItems] = useState<OrderItemLike[]>([]);
   const [priceById, setPriceById] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(true);
@@ -155,7 +161,7 @@ export default function OrderDetails() {
   };
 
   const printAndAcceptOrder = async (orderId: string) => {
-    await printOrderToSunmi(orderId);
+    await printOrder(orderId);
     await acceptOrder(orderId);
   };
 
@@ -308,49 +314,88 @@ export default function OrderDetails() {
             </View>
 
             <View className="flex-row items-center justify-between mb-6">
-              <TouchableOpacity
-                className="px-3 py-2 rounded bg-gray-100"
-                onPress={handleBack}
-              >
-                <Text className="text-gray-700">Back</Text>
-              </TouchableOpacity>
-
               <View className="flex-row gap-2">
-                {secondaryAction ? (
-                  <TouchableOpacity
-                    className={`px-3 py-2 rounded border border-red-500 ${
-                      busy ? "opacity-60" : ""
-                    }`}
-                    onPress={() => runAction(secondaryAction.onPress)}
-                    disabled={busy}
-                  >
-                    <Text className="text-red-600 font-semibold">
-                      {secondaryAction.label}
-                    </Text>
-                  </TouchableOpacity>
-                ) : null}
-                {primaryAction ? (
-                  <TouchableOpacity
-                    className={`px-3 py-2 rounded ${
-                      primaryAction.tone === "primary"
-                        ? "bg-black"
-                        : "bg-gray-200"
-                    } ${busy || primaryAction.disabled ? "opacity-60" : ""}`}
-                    onPress={() => runAction(primaryAction.onPress)}
-                    disabled={busy || primaryAction.disabled}
-                  >
-                    <Text
-                      className={
-                        primaryAction.tone === "primary"
-                          ? "text-white font-semibold"
-                          : "text-gray-700 font-semibold"
-                      }
-                    >
-                      {primaryAction.label}
-                    </Text>
-                  </TouchableOpacity>
-                ) : null}
+                <TouchableOpacity
+                  className="px-3 py-2 rounded bg-gray-400"
+                  onPress={handleBack}
+                >
+                  <Text className="text-gray-900">Back</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  className="px-3 py-2 rounded bg-gray-400"
+                  onPress={async () => {
+                    setPrintInfo(`Print button pressed: ${order.id}`);
+                    try {
+                      // Log PrinterModule info
+                      const printerModule =
+                        require("react-native").NativeModules.PrinterModule;
+                      setPrinterDebug(
+                        `PrinterModule: ${JSON.stringify(printerModule)}`,
+                      );
+                      const result = await printOrder(order.id);
+                      setPrinterDebug(
+                        (prev) =>
+                          prev + `\nPrint result: ${JSON.stringify(result)}`,
+                      );
+                    } catch (err) {
+                      setPrinterDebug((prev) => prev + `\nPrint error: ${err}`);
+                    }
+                  }}
+                >
+                  <Text className="text-gray-900">Print</Text>
+                </TouchableOpacity>
               </View>
+            </View>
+            {/* // Debugging and actions section */}
+            <View className="flex-col gap-2">
+              {/* <View className="mb-2 p-2 bg-gray-100 rounded"> */}
+              <Text className="text-gray-800 text-sm">Debug Info:</Text>
+              <View className="mb-2 p-2 bg-gray-100 rounded">{JSON.stringify(NativeModules)}</View>
+              {printInfo ? (
+                <View className="mb-2 p-2 bg-yellow-100 rounded">
+                  <Text className="text-yellow-800 text-xs">{printInfo}</Text>
+                </View>
+              ) : null}
+              {printerDebug ? (
+                <View className="mb-2 p-2 bg-blue-100 rounded">
+                  <Text className="text-blue-800 text-xs">{printerDebug}</Text>
+                </View>
+              ) : null}
+              {secondaryAction ? (
+                <TouchableOpacity
+                  className={`px-3 py-2 rounded border border-red-500 ${
+                    busy ? "opacity-60" : ""
+                  }`}
+                  onPress={() => runAction(secondaryAction.onPress)}
+                  disabled={busy}
+                >
+                  <Text className="text-red-600 font-semibold">
+                    {secondaryAction.label}
+                  </Text>
+                </TouchableOpacity>
+              ) : null}
+              {primaryAction ? (
+                <TouchableOpacity
+                  className={`px-3 py-2 rounded ${
+                    primaryAction.tone === "primary"
+                      ? "bg-black"
+                      : "bg-gray-200"
+                  } ${busy || primaryAction.disabled ? "opacity-60" : ""}`}
+                  onPress={() => runAction(primaryAction.onPress)}
+                  disabled={busy || primaryAction.disabled}
+                >
+                  <Text
+                    className={
+                      primaryAction.tone === "primary"
+                        ? "text-white font-semibold"
+                        : "text-gray-700 font-semibold"
+                    }
+                  >
+                    {primaryAction.label}
+                  </Text>
+                </TouchableOpacity>
+              ) : null}
             </View>
           </ScrollView>
         )}

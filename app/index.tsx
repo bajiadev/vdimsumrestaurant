@@ -1,16 +1,16 @@
 import type { Order } from "@/type";
+import { Ionicons } from "@expo/vector-icons";
+import * as Notifications from "expo-notifications";
+import { useRouter } from "expo-router";
 import { useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   FlatList,
+  StyleSheet,
   Text,
   TouchableOpacity,
   View,
 } from "react-native";
-import { useRouter } from "expo-router";
-import { Ionicons } from "@expo/vector-icons";
-import { StyleSheet } from "react-native";
-import * as Notifications from "expo-notifications";
 
 import {
   acceptOrder,
@@ -19,7 +19,7 @@ import {
   startPreparingOrder,
   subscribeLiveOrders,
 } from "@/lib/firebase";
-import { printOrderToSunmi } from "@/lib/sunmiPrinter";
+import { printOrder } from "@/lib/printer";
 import { useShopStatusStore } from "@/store/shopStatus.store";
 import ScreenTemplate from "../components/ScreenTemplate";
 
@@ -198,7 +198,7 @@ export default function Index() {
   };
 
   const printAndAcceptOrder = async (orderId: string) => {
-    await printOrderToSunmi(orderId);
+    await printOrder(orderId);
     await acceptOrder(orderId);
   };
 
