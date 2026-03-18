@@ -61,6 +61,12 @@ const formatStatusLabel = (status: string) => {
     .replace(/^./, (char) => char.toUpperCase());
 };
 
+
+console.log('Available Modules:', Object.keys(NativeModules));
+if (!NativeModules.PrinterModule) {
+  console.error('PrinterModule is MISSING from NativeModules');
+}
+
 export default function OrderDetails() {
   const router = useRouter();
   const params = useLocalSearchParams();
