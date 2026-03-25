@@ -363,7 +363,7 @@ const getTimezoneOffsetMinutes = (timeZone: string, date: Date) => {
 
 export const getOrderDetails = async (orderId: string) => {
   const itemsSnap = await getDocs(
-    collection(db, "orders", orderId, "order_items"),
+    collection(db, "orders", orderId, "orderItems"),
   );
 
   return itemsSnap.docs.map((doc) => ({

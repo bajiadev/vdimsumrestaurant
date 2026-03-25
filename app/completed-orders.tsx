@@ -1,4 +1,6 @@
 import type { Order } from "@/type";
+import { Ionicons } from "@expo/vector-icons";
+import { useRouter } from "expo-router";
 import { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
@@ -7,14 +9,14 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { useRouter } from "expo-router";
-import { Ionicons } from "@expo/vector-icons";
 
 import { getAllOrders } from "@/lib/firebase";
 import ScreenTemplate from "../components/ScreenTemplate";
 
 type OrderLike = Order & {
+  orderNumber?: string;
   amount?: number;
+  itemCount?: number;
   cartItems?: { id?: string; quantity?: number }[];
   uid?: string;
   shopId?: string;
@@ -47,13 +49,11 @@ export default function CompletedOrders() {
   }, [loadOrders]);
 
   const getOrderItemCount = (order: OrderLike) => {
-    if (order.items?.length) return order.items.length;
-    if (order.cartItems?.length) return order.cartItems.length;
+    if (order.itemCount) return order.itemCount;
     return 0;
   };
 
   const getOrderTotalPence = (order: OrderLike) => {
-    if (typeof order.total === "number") return order.total;
     if (typeof order.amount === "number") return order.amount;
     return 0;
   };
@@ -94,7 +94,7 @@ export default function CompletedOrders() {
               <View className="border border-gray-200 rounded-xl p-4 mb-3 bg-white">
                 <View className="flex-row items-center justify-between">
                   <Text className="font-semibold">
-                    Order #{item.id.slice(0, 6)}
+                    Order #{item?.orderNumber}
                   </Text>
                   <View className="flex-row items-center gap-2">
                     <Text className="text-gray-500 text-xs">
@@ -112,19 +112,23 @@ export default function CompletedOrders() {
                     >
                       <Ionicons
                         name="chevron-forward"
-                        size={18}
-                        color="#6b7280"
+                        size={24}
+                        color="#000611"
                       />
                     </TouchableOpacity>
                   </View>
                 </View>
-                <Text className="text-gray-600 mt-2">
-                  {getOrderItemCount(item)} items
-                </Text>
-                <Text className="text-gray-600">
-                  Total: £{(getOrderTotalPence(item) / 100).toFixed(2)}
-                </Text>
-                <Text className="text-gray-600">Status: {item.status}</Text>
+                <View className="flex flex-row items-center justify-between">
+                  <View>
+                    <Text className="text-gray-600 mt-2">
+                      {item.itemCount} items
+                    </Text>
+                    <Text className="text-gray-600">
+                      Total: £{(item.amount ? (item.amount / 100).toFixed(2) : "0.00")}
+                    </Text>
+                  </View>
+                  <Text className="text-gray-600">Status: {item.status}</Text>
+                </View>
               </View>
             )}
             ListEmptyComponent={

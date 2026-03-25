@@ -25,7 +25,7 @@ import ScreenTemplate from "../components/ScreenTemplate";
 
 type OrderLike = Order & {
   amount?: number;
-  cartItems?: { id?: string; quantity?: number }[];
+  orderItems?: { id?: string; quantity?: number }[];
   uid?: string;
   shopId?: string;
 };
@@ -175,8 +175,8 @@ export default function Index() {
   }, [orders, isOpen]);
 
   const getOrderItemCount = (order: OrderLike) => {
-    if (order.items?.length) return order.items.length;
-    if (order.cartItems?.length) return order.cartItems.length;
+    if (order.itemCount) return order.itemCount;
+    if (order.orderItems?.length) return order.orderItems.length;
     return 0;
   };
 

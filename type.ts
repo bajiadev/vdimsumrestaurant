@@ -195,7 +195,19 @@ export const LIVE_ORDER_STATUSES = [
 
 export type Order = {
   id: string;
+  orderNumber: string;
   userId: string;
+  orderType: string;
+  deliveryAddress?: {
+    name?: string;
+    street1?: string;
+    street2?: string;
+    city?: string;
+    postcode?: string;
+    formatted?: string;
+    [key: string]: any;
+  };
+  itemCount: number;
   items: {
     id: string;
     name: string;
@@ -207,3 +219,24 @@ export type Order = {
   status: OrderStatus;
   createdAt: Timestamp;
 };
+
+export type OrderItem = {
+  id: string; // document ID
+  menuItemId: string;
+  name: string;
+  price: number; // pence
+  quantity: number;
+  image_url?: string;
+  customizations?: OrderCustomization[];
+  isRewardRedemption?: boolean;
+  rewardPointsCost?: number;
+  redemptionId?: string;
+};
+
+export interface OrderCustomization {
+  groupId: string;
+  groupName: string;
+  optionId: string;
+  optionName: string;
+  price: number;
+}

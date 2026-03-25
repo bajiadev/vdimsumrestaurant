@@ -1,20 +1,19 @@
-import type { Order } from "@/type";
+import type { Order, OrderItem } from "@/type";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
+  NativeModules,
   ScrollView,
   Text,
   TouchableOpacity,
   View,
-  NativeModules,
 } from "react-native";
 
 import {
   acceptOrder,
   cancelOrder,
   completeOrder,
-  getMenuItemsByIds,
   getOrderById,
   getOrderDetails,
   markOrderOnTheWay,
@@ -22,21 +21,23 @@ import {
   startPreparingOrder,
 } from "@/lib/firebase";
 import { printOrder } from "@/lib/printer";
+
 import ScreenTemplate from "../components/ScreenTemplate";
 
 type OrderLike = Order & {
+  orderNumber?: string;
   amount?: number;
   cartItems?: { id?: string; quantity?: number }[];
   uid?: string;
   shopId?: string;
 };
 
-type OrderItemLike = {
-  id?: string;
-  name?: string;
-  price?: number;
-  quantity?: number;
-};
+// type OrderItemLike = {
+//   id?: string;
+//   name?: string;
+//   price?: number;
+//   quantity?: number;
+// };
 
 type ActionConfig = {
   label: string;
@@ -68,12 +69,12 @@ export default function OrderDetails() {
   const from = typeof params.from === "string" ? params.from : "";
 
   const [order, setOrder] = useState<OrderLike | null>(null);
-
+  const [orderItems, setOrderItems] = useState<OrderItem[]>([]);
   // Debugging states
   const [printInfo, setPrintInfo] = useState<string>("");
   const [printerDebug, setPrinterDebug] = useState<string>("");
 
-  const [orderItems, setOrderItems] = useState<OrderItemLike[]>([]);
+  //const [orderItems, setOrderItems] = useState<OrderItemLike[]>([]);
   const [priceById, setPriceById] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -88,7 +89,7 @@ export default function OrderDetails() {
         getOrderDetails(orderId),
       ]);
       setOrder(orderData);
-      setOrderItems(itemsData as OrderItemLike[]);
+      setOrderItems(itemsData as OrderItem[]);
     } catch (err: any) {
       setError(err?.message ?? "Failed to load order");
     } finally {
@@ -103,44 +104,36 @@ export default function OrderDetails() {
   const displayedItems = useMemo(() => {
     if (orderItems.length) return orderItems;
     if (order?.items?.length) return order.items;
-    if (order?.cartItems?.length) {
-      return order.cartItems.map((item) => ({
-        id: item.id,
-        name: (item as { name?: string }).name ?? "Item",
-        price: (item as { price?: number }).price,
-        quantity: item.quantity ?? 1,
-      }));
-    }
     return [];
   }, [orderItems, order]);
 
-  useEffect(() => {
-    const missingIds = displayedItems
-      .filter((item) => typeof item.price !== "number" && item.id)
-      .map((item) => item.id as string)
-      .filter((id) => !(id in priceById));
+  // useEffect(() => {
+  //   const missingIds = displayedItems
+  //     .filter((item) => typeof item.price !== "number" && item.id)
+  //     .map((item) => item.id as string)
+  //     .filter((id) => !(id in priceById));
 
-    if (!missingIds.length) return;
+  //   if (!missingIds.length) return;
 
-    let mounted = true;
-    getMenuItemsByIds(missingIds)
-      .then((items) => {
-        if (!mounted) return;
-        const nextPrices: Record<string, number> = {};
-        Object.entries(items).forEach(([id, data]) => {
-          const price = (data as { price?: number }).price;
-          if (typeof price === "number") nextPrices[id] = price;
-        });
-        if (Object.keys(nextPrices).length) {
-          setPriceById((prev) => ({ ...prev, ...nextPrices }));
-        }
-      })
-      .catch(() => undefined);
+  //   let mounted = true;
+  //   getMenuItemsByIds(missingIds)
+  //     .then((items) => {
+  //       if (!mounted) return;
+  //       const nextPrices: Record<string, number> = {};
+  //       Object.entries(items).forEach(([id, data]) => {
+  //         const price = (data as { price?: number }).price;
+  //         if (typeof price === "number") nextPrices[id] = price;
+  //       });
+  //       if (Object.keys(nextPrices).length) {
+  //         setPriceById((prev) => ({ ...prev, ...nextPrices }));
+  //       }
+  //     })
+  //     .catch(() => undefined);
 
-    return () => {
-      mounted = false;
-    };
-  }, [displayedItems, priceById]);
+  //   return () => {
+  //     mounted = false;
+  //   };
+  // }, [displayedItems, priceById]);
 
   const getOrderTotalPence = (orderValue?: OrderLike | null) => {
     if (!orderValue) return 0;
@@ -245,6 +238,28 @@ export default function OrderDetails() {
     router.back();
   };
 
+  // const handleTestPrint = async () => {
+  //   try {
+  //     const result = await testPrint();
+  //     if (result.length > 0) {
+  //       setPrintInfo(prev => prev + "\n" + result.join("\n"));
+  //     } else {
+  //       setPrinterDebug("Test print completed successfully with no debug info.");
+  //     }
+  //   } catch (error) {
+  //     console.error("Test print failed:", error);
+  //   }
+  // };
+
+  useEffect(() => {
+    if (NativeModules) {
+      const { SmartPos } = NativeModules;
+      setPrintInfo(
+        `NativeModules: ${JSON.stringify(NativeModules)} \nSmartPos: ${JSON.stringify(SmartPos)}`,
+      );
+    }
+  }, []);
+
   return (
     <ScreenTemplate title="Order Details" centered={false}>
       <View className="flex-1 w-full">
@@ -266,18 +281,21 @@ export default function OrderDetails() {
             <View className="border border-gray-200 rounded-xl p-4 mb-4 bg-white">
               <View className="flex-row items-center justify-between">
                 <Text className="font-semibold">
-                  Order #{order.id.slice(0, 6)}
+                  Order #{order.orderNumber}
                 </Text>
                 <Text className="text-gray-500 text-xs">
                   {formatOrderDate(order)}
                 </Text>
               </View>
-              <Text className="text-gray-600 mt-2">
-                Status: {formatStatusLabel(order.status)}
-              </Text>
-              <Text className="text-gray-600">
-                Total: £{(getOrderTotalPence(order) / 100).toFixed(2)}
-              </Text>
+              <View className="flex-row items-center justify-between">
+                <Text className="text-gray-600">
+                  Total: £
+                  {order.amount ? (order.amount / 100).toFixed(2) : "0.00"}
+                </Text>
+                <Text className="text-gray-600 mt-2">
+                  Status: {formatStatusLabel(order.status)}
+                </Text>
+              </View>
             </View>
 
             <View className="border border-gray-200 rounded-xl p-4 mb-4 bg-white">
@@ -324,78 +342,11 @@ export default function OrderDetails() {
 
                 <TouchableOpacity
                   className="px-3 py-2 rounded bg-gray-400"
-                  onPress={async () => {
-                    setPrintInfo(`Print button pressed: ${order.id}`);
-                    try {
-                      // Log PrinterModule info
-                      const printerModule =
-                        require("react-native").NativeModules.PrinterModule;
-                      setPrinterDebug(
-                        `PrinterModule: ${JSON.stringify(printerModule)}`,
-                      );
-                      const result = await printOrder(order.id);
-                      setPrinterDebug(
-                        (prev) =>
-                          prev + `\nPrint result: ${JSON.stringify(result)}`,
-                      );
-                    } catch (err) {
-                      setPrinterDebug((prev) => prev + `\nPrint error: ${err}`);
-                    }
-                  }}
+                  onPress={() => printOrder(order.id)}
                 >
                   <Text className="text-gray-900">Print</Text>
                 </TouchableOpacity>
               </View>
-            </View>
-            {/* // Debugging and actions section */}
-            <View className="flex-col gap-2">
-              {/* <View className="mb-2 p-2 bg-gray-100 rounded"> */}
-              <Text className="text-gray-800 text-sm">Debug Info:</Text>
-              <View className="mb-2 p-2 bg-gray-100 rounded">{JSON.stringify(NativeModules)}</View>
-              {printInfo ? (
-                <View className="mb-2 p-2 bg-yellow-100 rounded">
-                  <Text className="text-yellow-800 text-xs">{printInfo}</Text>
-                </View>
-              ) : null}
-              {printerDebug ? (
-                <View className="mb-2 p-2 bg-blue-100 rounded">
-                  <Text className="text-blue-800 text-xs">{printerDebug}</Text>
-                </View>
-              ) : null}
-              {secondaryAction ? (
-                <TouchableOpacity
-                  className={`px-3 py-2 rounded border border-red-500 ${
-                    busy ? "opacity-60" : ""
-                  }`}
-                  onPress={() => runAction(secondaryAction.onPress)}
-                  disabled={busy}
-                >
-                  <Text className="text-red-600 font-semibold">
-                    {secondaryAction.label}
-                  </Text>
-                </TouchableOpacity>
-              ) : null}
-              {primaryAction ? (
-                <TouchableOpacity
-                  className={`px-3 py-2 rounded ${
-                    primaryAction.tone === "primary"
-                      ? "bg-black"
-                      : "bg-gray-200"
-                  } ${busy || primaryAction.disabled ? "opacity-60" : ""}`}
-                  onPress={() => runAction(primaryAction.onPress)}
-                  disabled={busy || primaryAction.disabled}
-                >
-                  <Text
-                    className={
-                      primaryAction.tone === "primary"
-                        ? "text-white font-semibold"
-                        : "text-gray-700 font-semibold"
-                    }
-                  >
-                    {primaryAction.label}
-                  </Text>
-                </TouchableOpacity>
-              ) : null}
             </View>
           </ScrollView>
         )}
