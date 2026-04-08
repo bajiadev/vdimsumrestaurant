@@ -3,7 +3,6 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
-  NativeModules,
   ScrollView,
   Text,
   TouchableOpacity,
@@ -13,10 +12,8 @@ import {
 import {
   acceptOrder,
   cancelOrder,
-  completeOrder,
   getOrderById,
   getOrderDetails,
-  markOrderOnTheWay,
   markOrderReady,
   startPreparingOrder,
 } from "@/lib/firebase";
@@ -48,10 +45,10 @@ type ActionConfig = {
 
 const cancellableStatuses = new Set([
   "pending",
-  "confirmed",
+  "paid",
+  "accepted",
   "preparing",
   "ready",
-  "onTheWay",
 ]);
 
 const formatStatusLabel = (status: string) => {
@@ -71,8 +68,8 @@ export default function OrderDetails() {
   const [order, setOrder] = useState<OrderLike | null>(null);
   const [orderItems, setOrderItems] = useState<OrderItem[]>([]);
   // Debugging states
-  const [printInfo, setPrintInfo] = useState<string>("");
-  const [printerDebug, setPrinterDebug] = useState<string>("");
+  // const [printInfo, setPrintInfo] = useState<string>("");
+  // const [printerDebug, setPrinterDebug] = useState<string>("");
 
   //const [orderItems, setOrderItems] = useState<OrderItemLike[]>([]);
   const [priceById, setPriceById] = useState<Record<string, number>>({});
@@ -137,7 +134,6 @@ export default function OrderDetails() {
 
   const getOrderTotalPence = (orderValue?: OrderLike | null) => {
     if (!orderValue) return 0;
-    if (typeof orderValue.total === "number") return orderValue.total;
     if (typeof orderValue.amount === "number") return orderValue.amount;
     return 0;
   };
@@ -165,11 +161,17 @@ export default function OrderDetails() {
     switch (orderValue.status) {
       case "pending":
         return {
+          label: "Awaiting Payment",
+          disabled: true,
+          tone: "secondary",
+        };
+      case "paid":
+        return {
           label: "Accept",
           onPress: () => printAndAcceptOrder(orderValue.id),
           tone: "primary",
         };
-      case "confirmed":
+      case "accepted":
         return {
           label: "Start Preparing",
           onPress: () => startPreparingOrder(orderValue.id),
@@ -182,17 +184,7 @@ export default function OrderDetails() {
           tone: "primary",
         };
       case "ready":
-        return {
-          label: "Mark On The Way",
-          onPress: () => markOrderOnTheWay(orderValue.id),
-          tone: "primary",
-        };
-      case "onTheWay":
-        return {
-          label: "Complete Order",
-          onPress: () => completeOrder(orderValue.id),
-          tone: "primary",
-        };
+        return { label: "Ready for Driver", disabled: true, tone: "secondary" };
       default:
         return null;
     }
@@ -223,8 +215,8 @@ export default function OrderDetails() {
     }
   };
 
-  const primaryAction = getPrimaryAction(order);
-  const secondaryAction = getSecondaryAction(order);
+  // const primaryAction = getPrimaryAction(order);
+  // const secondaryAction = getSecondaryAction(order);
 
   const handleBack = () => {
     if (from === "completed") {
@@ -251,14 +243,14 @@ export default function OrderDetails() {
   //   }
   // };
 
-  useEffect(() => {
-    if (NativeModules) {
-      const { SmartPos } = NativeModules;
-      setPrintInfo(
-        `NativeModules: ${JSON.stringify(NativeModules)} \nSmartPos: ${JSON.stringify(SmartPos)}`,
-      );
-    }
-  }, []);
+  // useEffect(() => {
+  //   if (NativeModules) {
+  //     const { SmartPos } = NativeModules;
+  //     setPrintInfo(
+  //       `NativeModules: ${JSON.stringify(NativeModules)} \nSmartPos: ${JSON.stringify(SmartPos)}`,
+  //     );
+  //   }
+  // }, []);
 
   return (
     <ScreenTemplate title="Order Details" centered={false}>
@@ -294,6 +286,16 @@ export default function OrderDetails() {
                 </Text>
                 <Text className="text-gray-600 mt-2">
                   Status: {formatStatusLabel(order.status)}
+                </Text>
+              </View>
+              <View className="flex-row items-center justify-between">
+                <Text className="text-gray-600 mt-2">
+                  Type: {order.orderType ?? "N/A"}
+                </Text>
+              </View>
+              <View className="flex-row items-start justify-between">
+                <Text className="text-gray-600 mt-2 flex-1 leading-5">
+                  {order.deliveryAddress?.formatted ?? ""}
                 </Text>
               </View>
             </View>

@@ -4,9 +4,12 @@ import { NativeModules } from "react-native";
 import { PrintStrFormat } from "react-native-smartpos";
 
 const { SmartPos } = NativeModules;
-const RECEIPT_WIDTH = 42;
+const RECEIPT_WIDTH = 60;
 const RECEIPT_SEPARATOR =
-  "------------------------------------------------------------------------";
+  "----------------------------------------------------------".slice(
+    0,
+    RECEIPT_WIDTH,
+  );
 
 const formatOrderDate = (order: Order) => {
   const createdAt = order.createdAt as any;
@@ -19,13 +22,7 @@ const formatOrderDate = (order: Order) => {
   return "";
 };
 
-const getOrderTotalPence = (order: Order) => {
-  const total = (order as { total?: number }).total;
-  const amount = (order as { amount?: number }).amount;
-  if (typeof total === "number") return total;
-  if (typeof amount === "number") return amount;
-  return 0;
-};
+const getOrderTotalPence = (order: Order) => order.amount ?? 0;
 
 const getPrintableDeliveryAddressLines = (
   deliveryAddress?: Order["deliveryAddress"],
@@ -55,8 +52,9 @@ export const printOrder = async (orderId: string) => {
     getOrderDetails(orderId),
   ]);
 
-  const orderItems =
-    (items as { name?: string; quantity?: number; price?: number }[]) ?? [];
+  type PrintItem = { name?: string; quantity?: number; price?: number };
+  const orderItems: PrintItem[] =
+    items.length > 0 ? (items as PrintItem[]) : (order.items ?? []);
   const date = formatOrderDate(order);
   const totalPounds = (getOrderTotalPence(order) / 100).toFixed(2);
   const deliveryAddressLines = getPrintableDeliveryAddressLines(
@@ -70,7 +68,7 @@ export const printOrder = async (orderId: string) => {
     format.textSize = 40;
     format.ali = "center";
     format.style = "bold";
-    format.lineSpacing = 8;
+    format.lineSpacing = 12;
     SmartPos.setPrintAppendString("VDimSum", format);
 
     // Order type
@@ -78,7 +76,7 @@ export const printOrder = async (orderId: string) => {
     format.ali = "center";
     format.style = "bold";
     format.underline = true;
-    format.lineSpacing = 6;
+    format.lineSpacing = 10;
     SmartPos.setPrintAppendString(
       (order.orderType ?? "Order").toUpperCase(),
       format,
@@ -99,17 +97,14 @@ export const printOrder = async (orderId: string) => {
     format.textSize = 25;
     format.ali = "normal";
     format.style = "normal";
-    format.lineSpacing = 4;
+    format.lineSpacing = 10;
     SmartPos.setPrintAppendString(`Order #${order.orderNumber}`, format);
     if (date) SmartPos.setPrintAppendString(`Time: ${date}`, format);
-    SmartPos.setPrintAppendString(RECEIPT_SEPARATOR, format);
 
     // Column header
     format.textSize = 25;
     format.ali = "normal";
     format.style = "bold";
-    SmartPos.setPrintAppendString(RECEIPT_SEPARATOR, format);
-    format.style = "normal";
     SmartPos.setPrintAppendString(RECEIPT_SEPARATOR, format);
 
     // Items
@@ -119,6 +114,7 @@ export const printOrder = async (orderId: string) => {
       const price = `£${((item.price ?? 0) / 100).toFixed(2)}`;
 
       format.ali = "normal";
+      format.style = "bold";
       SmartPos.setPrintAppendString(`${qty} ${name}`, format);
 
       // SmartPos maps right alignment to ALIGN_OPPOSITE.
@@ -134,13 +130,13 @@ export const printOrder = async (orderId: string) => {
     format.ali = "normal";
     format.style = "bold";
     format.lineSpacing = 6;
-    SmartPos.setPrintAppendString(`Total: GBP ${totalPounds}`, format);
+    SmartPos.setPrintAppendString(`Total: £ ${totalPounds}`, format);
 
     // Footer spacing
     format.textSize = 25;
     format.ali = "normal";
     format.style = "normal";
-    format.lineSpacing = 4;
+    format.lineSpacing = 10;
     SmartPos.setPrintAppendString(" ", format);
     SmartPos.setPrintAppendString(" ", format);
     SmartPos.setPrintAppendString(" ", format);

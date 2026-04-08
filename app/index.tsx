@@ -39,7 +39,8 @@ type ActionConfig = {
 
 const cancellableStatuses = new Set([
   "pending",
-  "confirmed",
+  "paid",
+  "accepted",
   "preparing",
   "ready",
 ]);
@@ -135,7 +136,10 @@ export default function Index() {
     }
 
     const pendingOrders = orders.filter((order) => order.status === "pending");
-    const pendingIds = new Set(pendingOrders.map((order) => order.id));
+    const newOrders = orders.filter(
+      (order) => order.status === "pending" || order.status === "paid",
+    );
+    const pendingIds = new Set(newOrders.map((order) => order.id));
 
     alertIntervalsRef.current.forEach((intervalId, orderId) => {
       if (!pendingIds.has(orderId)) {
@@ -144,7 +148,7 @@ export default function Index() {
       }
     });
 
-    pendingOrders.forEach((order) => {
+    newOrders.forEach((order) => {
       if (alertIntervalsRef.current.has(order.id)) return;
 
       const notify = () => {
@@ -206,11 +210,17 @@ export default function Index() {
     switch (order.status) {
       case "pending":
         return {
+          label: "Awaiting Payment",
+          disabled: true,
+          tone: "secondary",
+        };
+      case "paid":
+        return {
           label: "Accept",
           onPress: () => printAndAcceptOrder(order.id),
           tone: "primary",
         };
-      case "confirmed":
+      case "accepted":
         return {
           label: "Start Preparing",
           onPress: () => startPreparingOrder(order.id),

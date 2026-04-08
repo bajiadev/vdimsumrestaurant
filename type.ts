@@ -173,14 +173,12 @@ export interface createPaymentIntentRequest {
 }
 
 export const ORDER_STATUSES = [
-  "paid",
   "pending",
-  "confirmed",
+  "paid",
+  "accepted",
   "preparing",
   "ready",
-  "onTheWay",
   "completed",
-  "canceled",
   "cancelled",
 ] as const;
 
@@ -188,7 +186,8 @@ export type OrderStatus = (typeof ORDER_STATUSES)[number];
 
 export const LIVE_ORDER_STATUSES = [
   "pending",
-  "confirmed",
+  "paid",
+  "accepted",
   "preparing",
   "ready",
 ] as const satisfies readonly OrderStatus[];
@@ -215,7 +214,7 @@ export type Order = {
     quantity: number;
     image?: string;
   }[];
-  total: number; // pence
+  amount: number; // pence
   status: OrderStatus;
   createdAt: Timestamp;
 };

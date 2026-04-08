@@ -1,3 +1,8 @@
+import {
+  getMenuItemsWithShopAvailability,
+  updateShopMenuItemAvailability,
+} from "@/lib/firebase";
+import { useShopSessionStore } from "@/store/shopSession.store";
 import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
@@ -7,7 +12,6 @@ import {
   View,
 } from "react-native";
 import ScreenTemplate from "../components/ScreenTemplate";
-import { getMenuItems, updateMenuItemAvailability } from "@/lib/firebase";
 
 type MenuItem = {
   id: string;
@@ -16,6 +20,7 @@ type MenuItem = {
 };
 
 export default function ItemAvailability() {
+  const shopId = useShopSessionStore((state) => state.shopId);
   const [items, setItems] = useState<MenuItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -25,7 +30,7 @@ export default function ItemAvailability() {
     let mounted = true;
     const loadItems = async () => {
       try {
-        const data = await getMenuItems();
+        const data = await getMenuItemsWithShopAvailability(shopId);
         if (mounted) setItems(data as MenuItem[]);
       } catch (err: any) {
         if (mounted) setError(err?.message ?? "Failed to load menu items");
@@ -38,13 +43,13 @@ export default function ItemAvailability() {
     return () => {
       mounted = false;
     };
-  }, []);
+  }, [shopId]);
 
   const toggleAvailability = async (item: MenuItem) => {
     const nextValue = !item.isAvailable;
     setBusyIds((prev) => ({ ...prev, [item.id]: true }));
     try {
-      await updateMenuItemAvailability(item.id, nextValue);
+      await updateShopMenuItemAvailability(shopId, item.id, nextValue);
       setItems((prev) =>
         prev.map((entry) =>
           entry.id === item.id ? { ...entry, isAvailable: nextValue } : entry,

@@ -1,21 +1,12 @@
 import {
-  CartItemType,
-  CreateUserParams,
   GetMenuParams,
-  Order,
-  OrderStatus,
-  ORDER_STATUSES,
   LIVE_ORDER_STATUSES,
-  SignInParams,
+  Order,
+  ORDER_STATUSES,
+  OrderStatus,
 } from "@/type";
 import { initializeApp } from "firebase/app";
 import {
-  createUserWithEmailAndPassword,
-  signOut as firebaseSignOut,
-  signInWithEmailAndPassword,
-} from "firebase/auth";
-import {
-  addDoc,
   collection,
   doc,
   getDoc,
@@ -29,7 +20,6 @@ import {
   Timestamp,
   updateDoc,
   where,
-  writeBatch,
 } from "firebase/firestore";
 import { getFunctions } from "firebase/functions";
 import { getStorage } from "firebase/storage";
@@ -71,14 +61,6 @@ const DEFAULT_SHOP_ID = "j13bhdjITVrL97UfrwIG";
 //export const auth = getAuth(app);
 export const db = getFirestore(app);
 export const storage = getStorage(app);
-
-// export const signIn = async ({ email, password }: SignInParams) => {
-//   try {
-//     await signInWithEmailAndPassword(auth, email, password);
-//   } catch (e: any) {
-//     throw new Error(e.message);
-//   }
-// };
 
 /* -------------------------------------------------------------------------- */
 /*                                   MENU                                     */
@@ -131,6 +113,50 @@ export const updateMenuItemAvailability = async (
 ) => {
   const itemRef = doc(db, "menu", itemId);
   await updateDoc(itemRef, { isAvailable });
+};
+
+/**
+ * Returns all global menu items merged with per-shop availability overrides.
+ * Availability is stored in shops/{shopId}/menuItems/{itemId} so one shop
+ * changing isAvailable has no effect on any other shop.
+ * Defaults to available=true for items that have no override yet.
+ */
+export const getMenuItemsWithShopAvailability = async (shopId: string) => {
+  try {
+    const [menuSnap, overridesSnap] = await Promise.all([
+      getDocs(collection(db, "menu")),
+      getDocs(collection(db, "shops", shopId, "menuItems")),
+    ]);
+
+    const overrides = new Map<string, boolean>();
+    overridesSnap.docs.forEach((d) => {
+      const data = d.data();
+      if (typeof data.isAvailable === "boolean") {
+        overrides.set(d.id, data.isAvailable);
+      }
+    });
+
+    return menuSnap.docs.map((d) => ({
+      id: d.id,
+      ...d.data(),
+      isAvailable: overrides.has(d.id) ? overrides.get(d.id)! : true,
+    }));
+  } catch (e: any) {
+    throw new Error(e.message);
+  }
+};
+
+/**
+ * Writes the availability override for a single item into the shop's own
+ * subcollection — never touches the shared menu document.
+ */
+export const updateShopMenuItemAvailability = async (
+  shopId: string,
+  itemId: string,
+  isAvailable: boolean,
+) => {
+  const overrideRef = doc(db, "shops", shopId, "menuItems", itemId);
+  await setDoc(overrideRef, { isAvailable }, { merge: true });
 };
 
 export const getCategories = async () => {
@@ -242,14 +268,12 @@ export const subscribeLiveOrders = (
 };
 
 const ORDER_STATUS_TRANSITIONS: Record<OrderStatus, OrderStatus[]> = {
-  paid: ["pending", "confirmed", "canceled", "cancelled"],
-  pending: ["confirmed", "canceled", "cancelled"],
-  confirmed: ["preparing", "canceled", "cancelled"],
-  preparing: ["ready", "canceled", "cancelled"],
-  ready: ["onTheWay", "canceled", "cancelled"],
-  onTheWay: ["completed", "canceled", "cancelled"],
+  pending: ["paid", "cancelled"],
+  paid: ["accepted", "cancelled"],
+  accepted: ["preparing", "cancelled"],
+  preparing: ["ready", "cancelled"],
+  ready: ["completed", "cancelled"],
   completed: [],
-  canceled: [],
   cancelled: [],
 };
 
@@ -292,8 +316,7 @@ export const updateOrderStatus = async (
 };
 
 export const acceptOrder = async (orderId: string) => {
-  await updateOrderStatus(orderId, "confirmed");
-  await updateOrderStatus(orderId, "preparing");
+  await updateOrderStatus(orderId, "accepted");
 };
 
 export const startPreparingOrder = async (orderId: string) =>
@@ -302,14 +325,14 @@ export const startPreparingOrder = async (orderId: string) =>
 export const markOrderReady = async (orderId: string) =>
   updateOrderStatus(orderId, "ready");
 
-export const markOrderOnTheWay = async (orderId: string) =>
-  updateOrderStatus(orderId, "onTheWay");
+// export const markOrderOnTheWay = async (orderId: string) =>
+//   updateOrderStatus(orderId, "onTheWay");
 
 export const completeOrder = async (orderId: string) =>
   updateOrderStatus(orderId, "completed");
 
 export const cancelOrder = async (orderId: string) =>
-  updateOrderStatus(orderId, "canceled");
+  updateOrderStatus(orderId, "cancelled");
 
 const getLondonDayRange = (baseDate: Date = new Date()) => {
   const parts = new Intl.DateTimeFormat("en-GB", {
