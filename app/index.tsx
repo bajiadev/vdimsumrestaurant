@@ -20,6 +20,7 @@ import {
   subscribeLiveOrders,
 } from "@/lib/firebase";
 import { printOrder } from "@/lib/printer";
+import { useShopSessionStore } from "@/store/shopSession.store";
 import { useShopStatusStore } from "@/store/shopStatus.store";
 import ScreenTemplate from "../components/ScreenTemplate";
 
@@ -42,7 +43,6 @@ const cancellableStatuses = new Set([
   "paid",
   "accepted",
   "preparing",
-  "ready",
 ]);
 
 const formatStatusLabel = (status: string) => {
@@ -93,6 +93,7 @@ const RestaurantWindowSign = ({ isOpen }: { isOpen: boolean }) => {
 export default function Index() {
   const router = useRouter();
   const isOpen = useShopStatusStore((state) => state.isOpen);
+  const shopId = useShopSessionStore((state) => state.shopId);
   const [orders, setOrders] = useState<OrderLike[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -114,7 +115,7 @@ export default function Index() {
     setError(null);
     const unsubscribe = subscribeLiveOrders(
       (data) => {
-        setOrders(data);
+        setOrders(data.filter((o) => o.status !== "ready"));
         setLoading(false);
       },
       (err) => {
@@ -124,7 +125,7 @@ export default function Index() {
     );
 
     return () => unsubscribe();
-  }, [isOpen]);
+  }, [isOpen, shopId]);
 
   useEffect(() => {
     if (!isOpen) {
@@ -135,10 +136,7 @@ export default function Index() {
       return;
     }
 
-    const pendingOrders = orders.filter((order) => order.status === "pending");
-    const newOrders = orders.filter(
-      (order) => order.status === "pending" || order.status === "paid",
-    );
+    const newOrders = orders.filter((order) => order.status === "paid");
     const pendingIds = new Set(newOrders.map((order) => order.id));
 
     alertIntervalsRef.current.forEach((intervalId, orderId) => {
@@ -185,7 +183,6 @@ export default function Index() {
   };
 
   const getOrderTotalPence = (order: OrderLike) => {
-    if (typeof order.total === "number") return order.total;
     if (typeof order.amount === "number") return order.amount;
     return 0;
   };
@@ -208,12 +205,7 @@ export default function Index() {
 
   const getPrimaryAction = (order: OrderLike): ActionConfig | null => {
     switch (order.status) {
-      case "pending":
-        return {
-          label: "Awaiting Payment",
-          disabled: true,
-          tone: "secondary",
-        };
+
       case "paid":
         return {
           label: "Accept",
@@ -431,3 +423,6 @@ const styles = StyleSheet.create({
     textShadowRadius: 12,
   },
 });
+
+
+

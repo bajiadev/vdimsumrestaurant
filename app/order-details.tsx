@@ -159,12 +159,6 @@ export default function OrderDetails() {
   ): ActionConfig | null => {
     if (!orderValue) return null;
     switch (orderValue.status) {
-      case "pending":
-        return {
-          label: "Awaiting Payment",
-          disabled: true,
-          tone: "secondary",
-        };
       case "paid":
         return {
           label: "Accept",

@@ -1,7 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
 import { Drawer } from "expo-router/drawer";
 import { useEffect } from "react";
-import { Text, TouchableOpacity } from "react-native";
+import { ActivityIndicator, Text, TouchableOpacity, View } from "react-native";
 import "./global.css";
 
 import {
@@ -9,13 +9,20 @@ import {
   getShopForceClosed,
   getShopOpenStatus,
 } from "@/lib/firebase";
+import { useShopSessionStore } from "@/store/shopSession.store";
 import { useShopStatusStore } from "@/store/shopStatus.store";
 
 export default function RootLayout() {
+  const shopId = useShopSessionStore((state) => state.shopId);
+  const isShopSessionHydrated = useShopSessionStore(
+    (state) => state.isHydrated,
+  );
   const { isOpen, forceClosed, setForceClosed, setIsOpen, setStatus } =
     useShopStatusStore();
 
   useEffect(() => {
+    if (!isShopSessionHydrated) return;
+
     const loadOpenStatus = async () => {
       try {
         const [open, forced] = await Promise.all([
@@ -29,7 +36,7 @@ export default function RootLayout() {
     };
 
     loadOpenStatus();
-  }, []);
+  }, [isShopSessionHydrated, setStatus, shopId]);
 
   const handleToggleOpen = async () => {
     const nextForceClosed = !forceClosed;
@@ -42,6 +49,15 @@ export default function RootLayout() {
       setForceClosed(forceClosed);
     }
   };
+
+  if (!isShopSessionHydrated) {
+    return (
+      <View className="flex-1 items-center justify-center bg-white px-6">
+        <ActivityIndicator size="large" />
+        <Text className="mt-3 text-gray-500">Loading shop connection...</Text>
+      </View>
+    );
+  }
 
   const screenOptions = ({ navigation }: any) => ({
     headerLeft: () => (

@@ -5,6 +5,7 @@ import {
   ORDER_STATUSES,
   OrderStatus,
 } from "@/type";
+import { getActiveShopId } from "@/store/shopSession.store";
 import { initializeApp } from "firebase/app";
 import {
   collection,
@@ -43,7 +44,6 @@ export const app = initializeApp(firebaseConfig);
 export const cloudFunctions = getFunctions(app);
 
 const LONDON_TIMEZONE = "Europe/London";
-const DEFAULT_SHOP_ID = "j13bhdjITVrL97UfrwIG";
 
 // if (__DEV__) {
 //   connectFunctionsEmulator(cloudFunctions, "localhost", 5001);
@@ -179,7 +179,7 @@ export const getAllOrders = async (): Promise<Order[]> => {
   try {
     const q = query(
       collection(db, "orders"),
-      where("shopId", "==", DEFAULT_SHOP_ID),
+      where("shopId", "==", getActiveShopId()),
       where(
         "createdAt",
         ">=",
@@ -218,7 +218,7 @@ export const getLiveOrders = async (): Promise<Order[]> => {
       orderBy("createdAt", "desc"),
     ];
 
-    conditions.unshift(where("shopId", "==", DEFAULT_SHOP_ID));
+    conditions.unshift(where("shopId", "==", getActiveShopId()));
 
     const q = query(collection(db, "orders"), ...conditions);
     const snap = await getDocs(q);
@@ -245,7 +245,7 @@ export const subscribeLiveOrders = (
       orderBy("createdAt", "desc"),
     ];
 
-    conditions.unshift(where("shopId", "==", DEFAULT_SHOP_ID));
+    conditions.unshift(where("shopId", "==", getActiveShopId()));
 
     const q = query(collection(db, "orders"), ...conditions);
 
@@ -268,7 +268,6 @@ export const subscribeLiveOrders = (
 };
 
 const ORDER_STATUS_TRANSITIONS: Record<OrderStatus, OrderStatus[]> = {
-  pending: ["paid", "cancelled"],
   paid: ["accepted", "cancelled"],
   accepted: ["preparing", "cancelled"],
   preparing: ["ready", "cancelled"],
@@ -417,9 +416,25 @@ export const getShops = async () => {
   }
 };
 
+export const getShopById = async (shopId: string) => {
+  const trimmedShopId = shopId.trim();
+
+  if (!trimmedShopId) {
+    throw new Error("Shop ID is required");
+  }
+
+  const shopDoc = await getDoc(doc(db, "shops", trimmedShopId));
+
+  if (!shopDoc.exists()) {
+    return null;
+  }
+
+  return { id: shopDoc.id, ...shopDoc.data() };
+};
+
 export const getShopInfo = async () => {
   try {
-    const shopDoc = await getDoc(doc(db, "shops", DEFAULT_SHOP_ID));
+    const shopDoc = await getDoc(doc(db, "shops", getActiveShopId()));
 
     if (!shopDoc.exists()) {
       throw new Error("Shop info not found");
@@ -608,7 +623,7 @@ export const updateShopInfo = async (data: any) => {
     if (location) updateData.location = location;
     if (imageUrl) updateData.imageUrl = imageUrl;
 
-    await setDoc(doc(db, "shops", DEFAULT_SHOP_ID), updateData, {
+    await setDoc(doc(db, "shops", getActiveShopId()), updateData, {
       merge: true,
     });
 
@@ -624,7 +639,7 @@ export const updateShopInfo = async (data: any) => {
 export const forceCloseShop = async (forceClosed: boolean) => {
   try {
     await setDoc(
-      doc(db, "shops", DEFAULT_SHOP_ID),
+      doc(db, "shops", getActiveShopId()),
       { forceClosed },
       { merge: true },
     );
@@ -632,3 +647,59 @@ export const forceCloseShop = async (forceClosed: boolean) => {
     throw new Error(error.message || "Failed to update force close status");
   }
 };
+
+export type ShopOrderSettings = {
+  orderTypes: {
+    delivery: boolean;
+    pickup: boolean;
+  };
+  deliverySettings: {
+    methods: {
+      nearbyDrivers: boolean;
+      ownDrivers: boolean;
+    };
+  };
+};
+
+export const getShopOrderSettings = async (): Promise<ShopOrderSettings> => {
+  const data = (await getShopInfo()) as {
+    orderTypes?: { delivery?: unknown; pickup?: unknown };
+    deliverySettings?: {
+      methods?: { nearbyDrivers?: unknown; ownDrivers?: unknown };
+    };
+  };
+
+  return {
+    orderTypes: {
+      delivery: toBoolean(data?.orderTypes?.delivery) ?? false,
+      pickup: toBoolean(data?.orderTypes?.pickup) ?? false,
+    },
+    deliverySettings: {
+      methods: {
+        nearbyDrivers:
+          toBoolean(data?.deliverySettings?.methods?.nearbyDrivers) ?? false,
+        ownDrivers: toBoolean(data?.deliverySettings?.methods?.ownDrivers) ?? false,
+      },
+    },
+  };
+};
+
+export const updateShopOrderSettings = async (
+  next: Partial<ShopOrderSettings>,
+) => {
+  try {
+    await setDoc(
+      doc(db, "shops", getActiveShopId()),
+      {
+        ...next,
+        updatedAt: serverTimestamp(),
+      },
+      { merge: true },
+    );
+  } catch (error: any) {
+    throw new Error(error.message || "Failed to update order settings");
+  }
+};
+
+
+

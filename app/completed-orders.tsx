@@ -11,6 +11,7 @@ import {
 } from "react-native";
 
 import { getAllOrders } from "@/lib/firebase";
+import { useShopSessionStore } from "@/store/shopSession.store";
 import ScreenTemplate from "../components/ScreenTemplate";
 
 type OrderLike = Order & {
@@ -24,6 +25,7 @@ type OrderLike = Order & {
 
 export default function CompletedOrders() {
   const router = useRouter();
+  const shopId = useShopSessionStore((state) => state.shopId);
   const [orders, setOrders] = useState<OrderLike[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -38,7 +40,7 @@ export default function CompletedOrders() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [shopId]);
 
   useEffect(() => {
     console.log("Loading orders...", orders);
@@ -140,3 +142,6 @@ export default function CompletedOrders() {
     </ScreenTemplate>
   );
 }
+
+
+

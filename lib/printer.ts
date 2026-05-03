@@ -68,7 +68,7 @@ export const printOrder = async (orderId: string) => {
     format.textSize = 40;
     format.ali = "center";
     format.style = "bold";
-    format.lineSpacing = 12;
+    format.lineSpacing = 20;
     SmartPos.setPrintAppendString("VDimSum", format);
 
     // Order type
@@ -76,7 +76,7 @@ export const printOrder = async (orderId: string) => {
     format.ali = "center";
     format.style = "bold";
     format.underline = true;
-    format.lineSpacing = 10;
+    format.lineSpacing = 20;
     SmartPos.setPrintAppendString(
       (order.orderType ?? "Order").toUpperCase(),
       format,
@@ -87,7 +87,7 @@ export const printOrder = async (orderId: string) => {
       format.textSize = 30;
       format.ali = "normal";
       format.style = "bold";
-      format.lineSpacing = 4;
+      format.lineSpacing = 10;
       deliveryAddressLines.forEach((line) => {
         SmartPos.setPrintAppendString(line, format);
       });
@@ -122,23 +122,67 @@ export const printOrder = async (orderId: string) => {
       SmartPos.setPrintAppendString(price, format);
 
       format.ali = "normal";
-      format.lineSpacing = 2;
+      format.lineSpacing = 20;
     });
     // Total
     SmartPos.setPrintAppendString(RECEIPT_SEPARATOR, format);
     format.textSize = 30;
     format.ali = "normal";
     format.style = "bold";
-    format.lineSpacing = 6;
+    format.lineSpacing = 20;
     SmartPos.setPrintAppendString(`Total: £ ${totalPounds}`, format);
 
     // Footer spacing
     format.textSize = 25;
     format.ali = "normal";
     format.style = "normal";
-    format.lineSpacing = 10;
+    format.lineSpacing = 20;
     SmartPos.setPrintAppendString(" ", format);
+    format.textSize = 25;
+    format.ali = "normal";
+    format.style = "normal";
+    format.lineSpacing = 20;
     SmartPos.setPrintAppendString(" ", format);
+    format.textSize = 25;
+    format.ali = "normal";
+    format.style = "normal";
+    format.lineSpacing = 20;
+    SmartPos.setPrintAppendString(" ", format);
+    format.textSize = 30;
+    format.ali = "center";
+    format.style = "bold";
+    format.lineSpacing = 20;
+    SmartPos.setPrintAppendString("Thank you!", format);
+    format.textSize = 25;
+    format.ali = "normal";
+    format.style = "normal";
+    format.lineSpacing = 20;
+    SmartPos.setPrintAppendString(" ", format);
+    await SmartPos.setPrintAppendQRCode(
+      "https://www.vdimsum.co.uk",
+      200,
+      200,
+      "center",
+    );
+    format.textSize = 30;
+    format.ali = "center";
+    format.style = "bold";
+    format.lineSpacing = 20;
+    SmartPos.setPrintAppendString("www.vdimsum.co.uk", format);
+    format.textSize = 25;
+    format.ali = "normal";
+    format.style = "normal";
+    format.lineSpacing = 20;
+    SmartPos.setPrintAppendString(" ", format);
+    format.textSize = 25;
+    format.ali = "normal";
+    format.style = "normal";
+    format.lineSpacing = 20;
+    SmartPos.setPrintAppendString(" ", format);
+    format.textSize = 25;
+    format.ali = "normal";
+    format.style = "normal";
+    format.lineSpacing = 20;
     SmartPos.setPrintAppendString(" ", format);
 
     const resultMap = await SmartPos.setPrintStart();

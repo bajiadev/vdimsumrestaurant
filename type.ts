@@ -173,7 +173,6 @@ export interface createPaymentIntentRequest {
 }
 
 export const ORDER_STATUSES = [
-  "pending",
   "paid",
   "accepted",
   "preparing",
@@ -185,7 +184,6 @@ export const ORDER_STATUSES = [
 export type OrderStatus = (typeof ORDER_STATUSES)[number];
 
 export const LIVE_ORDER_STATUSES = [
-  "pending",
   "paid",
   "accepted",
   "preparing",
